@@ -11,17 +11,43 @@ SET DELETED ON
 SET TALK OFF
 SET ECHO OFF 
 
-PUBLIC stdVia, stdViaPropia, stdViaFolderActualiza
+SET SEPARATOR TO "/"
+
+PUBLIC stdVia, stdViaPropia, stdViaFolderActualiza,;
+	   Stdvia, stdViaLoc, stdViaPropia, stdRecuperaIngresado, vgImpresoraDefecto, stNumeroFilasReporte, stdFormaImpresion
 
 
 lcArchivoConfiguracion=ADDBS(ALLTRIM(SYS(5)+CURDIR()))+"Parametros.Ini"
 
-stdVia			= ADDBS(ALLTRIM(LeerIni("Parametros","ViaDatosERP",lcArchivoConfiguracion)))
-stdViaPropia 	= ADDBS(ALLTRIM(LeerIni("Parametros","ViaDatosPropios",lcArchivoConfiguracion)))
-stdViaFolderActualiza = ADDBS(ALLTRIM(LeerIni("Parametros","FolderActualizaacion",lcArchivoConfiguracion)))+ALLTRIM(LeerIni("Parametros","NombreArchivo",lcArchivoConfiguracion))
-SET STEP ON 
+stdVia					= ADDBS(ALLTRIM(LeerIni("Parametros","ViaDatosERP",lcArchivoConfiguracion)))
+stdViaPropia 		  	= ADDBS(ALLTRIM(LeerIni("Parametros","ViaDatosPropios",lcArchivoConfiguracion)))
+stdViaFolderActualiza 	= ADDBS(ALLTRIM(LeerIni("Parametros","FolderActualizaacion",lcArchivoConfiguracion)))+ALLTRIM(LeerIni("Parametros","NombreArchivo",lcArchivoConfiguracion))
+stdDiasIntervalo 		= VAL(LeerIni("Parametros", "DiasIntervalo", lcArchivoConfiguracion))
 
-DO FORM .\Formularios\FormularioVisorTrabajo.scx
+**DO FORM .\Formularios\FormularioVisorTrabajo.scx
+
+lcFechaFinal 	= DATE()
+lcFechaInicial 	= DATE() - stdDiasIntervalo
+
+
+TEXT TO vDatosTransfer TEXTMERGE NOSHOW 
+	<FechaInicial><<lcFechaInicial>></FechaInicial>
+	<FechaFinal><<lcFechaFinal>></FechaFinal>
+	<FiltroTipo><<"true">></FiltroTipo>
+	<FiltroModo><<"false">></FiltroModo>
+	<FiltroEstado><<"true">></FiltroEstado>
+	<FiltroProducto><<"false">></FiltroProducto>
+	<FiltroMaquina><<<<"false">></FiltroMaquina>
+	<FiltroMedidas><<<<"false">></FiltroMedidas>
+	<ValorTipo>2</ValorTipo>
+	<ValorEstado>1</ValorEstado>
+	<DiasIntervalo>stdDiasIntervalo</DiasIntervalo>
+ENDTEXT 
+
+IF CargaEnvironment() THEN 
+	DO FORM .\Formularios\wConsultaOT.scx WITH vDatosTransfer 
+ENDIF 
+
 
 CLOSE ALL
 CLEAR ALL
@@ -47,3 +73,90 @@ DECLARE integer GetPrivateProfileString IN WIN32API ;
 
 nRet = GetPrivateProfileString(cSection, cEntry, cDefault, @cRetVal, nRetLen, cINIFile)
 RETURN LEFT(cRetVal, nRetLen)
+
+FUNCTION CargaEnvironment
+
+PUBLIC Stdvia, stdViaLoc, stdViaPropia, stdRecuperaIngresado, vgImpresoraDefecto, stNumeroFilasReporte, stdFormaImpresion
+
+vBndExisteVia=.t.
+stdViaLoc="C:\Desarrollos\Copol\Reportes_Produccion\"
+stdRecuperaIngresado =.f.
+vgImpresoraDefecto="HP Deskjet 2640 series"
+stNumeroFilasReporte=11
+stdFormaImpresion=1
+
+IF vBndExisteVia then
+	stdVia=ADDBS(ALLTRIM(stdVia))
+
+	PUBLIC ARRAY aTablas (17,2)
+
+	aTablas[1,1]=StdVia+"Producto.DBF"
+	aTablas[2,1]=stdViaPropia+"OrdTra.DBF"
+	aTablas[3,1]=stdViaPropia+"DetOrdTra.DBF"
+	aTablas[4,1]=StdVia+"faProduc.DBF"
+	aTablas[5,1]=StdVia+"Clientes.DBF"
+	aTablas[6,1]=stdViaPropia+"ProdPrim.DBF"
+	aTablas[7,1]=StdVia+"Empres.DBF"
+	aTablas[8,1]=StdVia+"Copol.DBF"
+	aTablas[9,1]=stdViaPropia+"Copol_Sec.DBF"
+	aTablas[10,1]=stdViaPropia+"TipoProd.DBF"
+	aTablas[11,1]=stdViaPropia+"UniProduc.DBF"
+	aTablas[12,1]=StdVia+"SecProdu.DBF"
+	aTablas[13,1]=StdVia+"UniProdu.DBF"
+	aTablas[14,1]=stdViaPropia+"Colores.DBF"
+	aTablas[15,1]=stdViaPropia+"Materiales.DBF"
+	aTablas[16,1]=stdViaPropia+"Copol_Ing.DBF"
+	aTablas[17,1]=stdViaPropia+"DetOTPDF.DBF"
+
+	aTablas[1,2]="Producto"
+	aTablas[2,2]="OrdTra"
+	aTablas[3,2]="DetOrdTra"
+	aTablas[4,2]="faProduc"
+	aTablas[5,2]="Clientes"
+	aTablas[6,2]="ProdPrim"
+	aTablas[7,2]="Empres"
+	aTablas[8,2]="Copol"
+	aTablas[9,2]="Copol_Sec"
+	aTablas[10,2]="TipoProd"
+	aTablas[11,2]="UniProduc"
+	aTablas[12,2]="SecProdu"
+	aTablas[13,2]="UniProdu"
+	aTablas[14,2]="Colores"
+	aTablas[15,2]="Materiales"
+	aTablas[16,2]="Copol_Ing"
+	aTablas[17,2]="DetOTPDF"
+	
+	
+ 
+	FOR vI=1 TO ALEN(aTablas,1)
+		IF EMPTY(aTablas[vI,1]) then
+			LOOP
+		ENDIF 
+		IF !FILE(aTablas[vI,1]) then
+			=MESSAGEBOX("La Tabla "+ALLTRIM(aTablas[vI,1])+" no se encuentra en el Modulo, el proceso no puede incializarse")
+			vBndContinuaCarga = .f.
+			EXIT 
+		ENDIF
+
+		vTablaSelec=UPPER(ALLTRIM(aTablas[vI,1]))
+		vAlias=UPPER(ALLTRIM(aTablas[vI,2]))
+		IF !FILE(vTablaSelec) THEN 
+			WAIT WINDOW "No existe Tabla "+vtablaSelec
+		ENDIF 
+		
+		TRY 			
+			USE &vTablaSelec ALIAS &vAlias IN 0 SHARED 
+			vBndContinuaCarga=.t.
+		CATCH 
+			=MESSAGEBOX("Alguna de las tablas iniciales del proceso esta ocupada en exclusiva o no existe"+CHR(13)+;
+						"Tabla con Error : "+ALLTRIM(vTablaSelec)+CHR(13)+;
+						"Proceso Detenido")
+			vBndContinuaCarga=.f.
+			FINALLY 
+		ENDTRY 
+	ENDFOR
+ELSE
+	vBndContinuaCarga=.f.
+ENDIF 
+
+RETURN vBndContinuaCarga
